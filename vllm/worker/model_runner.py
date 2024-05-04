@@ -247,13 +247,13 @@ class ModelRunner:
             seq_id = seq_ids[0]
 
             computed_block_nums = seq_group_metadata.computed_block_nums
-            if (self.scheduler_config is not None
-                    and self.scheduler_config.chunked_prefill_enabled
-                    and not (computed_block_nums is None
-                             or computed_block_nums == [])):
-                raise RuntimeError(
-                    "chunked prefill cannot be used with prefix caching "
-                    "now.")
+            # if (self.scheduler_config is not None
+            #         and self.scheduler_config.chunked_prefill_enabled
+            #         and not (computed_block_nums is None
+            #                  or computed_block_nums == [])):
+            #     raise RuntimeError(
+            #         "chunked prefill cannot be used with prefix caching "
+            #         "now.")
 
             token_chunk_size = seq_group_metadata.token_chunk_size
             seq_data = seq_group_metadata.seq_data[seq_id]
@@ -325,9 +325,9 @@ class ModelRunner:
             # mapping will be [-1, -1, 2, 3, 4, 5, 6, 7, 0, 1].
             start_idx = 0
             if self.sliding_window is not None:
-                assert computed_len == 0, (
-                    "Prefix caching is currently not supported with "
-                    "sliding window attention")
+                # assert computed_len == 0, (
+                #     "Prefix caching is currently not supported with "
+                #     "sliding window attention")
                 start_idx = max(0, prompt_len - self.sliding_window)
 
             for i in range(computed_len, prefill_end):
