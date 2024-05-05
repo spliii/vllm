@@ -896,7 +896,7 @@ class Scheduler:
             nums_round = waiting_seqs[0].get_len() / 768  # lsp：每个prompt的长度 / 768 (chunked size = 768)
         else:
             nums_round = 0
-
+        is_mid = False
         if (not self.swapped) and self.waiting:
                 # myremaining_waiting, myprefills = self._schedule_prefills(
                     # mywaiting, mybudget, curr_loras, enable_chunking=False)
@@ -907,6 +907,7 @@ class Scheduler:
                     self.waiting, budget, curr_loras, enable_chunking=False)
             else:
                 round += 1
+                is_mid = True # mid生效，decode优先级最高（这些decode是因为prefill被mid而调度的，进行平滑）
         # if (not self.swapped) and self.waiting:
         #         # myremaining_waiting, myprefills = self._schedule_prefills(
         #             # mywaiting, mybudget, curr_loras, enable_chunking=False)
@@ -1067,7 +1068,7 @@ class Scheduler:
         if self.scheduler_config.chunked_prefill_enabled:
             return self._schedule_chunked_prefill()
         else:
-            return self._schedule_default_decode_mid()
+            return self._schedule_default()
 
     def _can_append_slots(self, seq_group: SequenceGroup) -> bool:
         """Determine whether or not we have enough space in the KV cache to
