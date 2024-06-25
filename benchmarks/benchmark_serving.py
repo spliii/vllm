@@ -3,7 +3,7 @@
 On the server side, run one of the following commands:
     vLLM OpenAI API server
     python -m vllm.entrypoints.openai.api_server \
-        --model <your_model> --swap-space 16 \
+        --model /data/spmdls/Qwen2-7B-Instruct --swap-space 16 \
         --disable-log-requests
 
     (TGI backend)
@@ -11,12 +11,12 @@ On the server side, run one of the following commands:
 
 On the client side, run:
     python benchmarks/benchmark_serving.py \
-        --backend <backend> \
-        --model <your_model> \
+        --backend vllm \
+        --model /data/spmdls/Qwen2-7B-Instruct \
         --dataset-name sharegpt \
         --dataset-path <path to dataset> \
-        --request-rate <request_rate> \ # By default <request_rate> is inf
-        --num-prompts <num_prompts> # By default <num_prompts> is 1000
+        --request-rate 5 \
+        --num-prompts 500
         
     when using tgi backend, add
         --endpoint /generate_stream
