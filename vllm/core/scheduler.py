@@ -1068,7 +1068,7 @@ class Scheduler:
         if self.scheduler_config.chunked_prefill_enabled:
             return self._schedule_chunked_prefill()
         else:
-            return self._schedule_default()
+            return self._schedule_default_decode_mid()
 
     def _can_append_slots(self, seq_group: SequenceGroup) -> bool:
         """Determine whether or not we have enough space in the KV cache to
@@ -1081,6 +1081,7 @@ class Scheduler:
             seq_group=seq_group,
             num_lookahead_slots=self._get_num_lookahead_slots(is_prefill),
         )
+
 
     def _can_swap_in(self, seq_group: SequenceGroup) -> bool:
         # Swapping in is considered decode.
