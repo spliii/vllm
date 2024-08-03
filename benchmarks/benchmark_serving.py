@@ -3,9 +3,16 @@
 On the server side, run one of the following commands:
     vLLM OpenAI API server
     vllm serve <your_model> \
+        --port 8005 \
         --swap-space 16 \
         --disable-log-requests
 
+    export CUDA_VISIBLE_DEVICES=0
+    vllm serve /data2/sp/models/Qwen2-7B-Instruct/ --swap-space 16 --port 8005 --disable-log-requests
+        
+    export CUDA_VISIBLE_DEVICES=1
+    vllm serve /data2/sp/models/Qwen2-7B-Instruct/ --swap-space 16 --port 8015 --disable-log-requests
+    
     (TGI backend)
     ./launch_tgi_server.sh <your_model> <max_batch_total_tokens>
 
@@ -17,6 +24,26 @@ On the client side, run:
         --dataset-path <path to dataset> \
         --request-rate <request_rate> \ # By default <request_rate> is inf
         --num-prompts <num_prompts> # By default <num_prompts> is 1000
+       
+    ===========sharegpt============= 
+    python benchmarks/benchmark_serving.py \
+        --backend vllm \
+        --model /data2/sp/models/Qwen2-7B-Instruct/ --port 8005 \
+        --dataset-name sharegpt \
+        --dataset-path /data2/sp/datasets/sharegpt_gpt4.json \
+        --request-rate inf \
+        --num-prompts 1000 \
+        --save-result --result-dir ./outputs/vllm
+    ============random===================
+    python benchmarks/benchmark_serving.py \
+        --backend vllm \
+        --model /data2/sp/models/Qwen2-7B-Instruct/ --port 8005 \
+        --dataset-name random \
+        --random-input-len 2000 --random-output-len 200 --random-range-ratio 0.6 --seed 42 \
+        --request-rate inf \
+        --num-prompts 100 \
+        --save-result --result-dir ./outputs/vllm 
+        
 
     when using tgi backend, add
         --endpoint /generate_stream
@@ -29,6 +56,7 @@ import os
 import random
 import time
 import warnings
+import random
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
@@ -84,10 +112,14 @@ def sample_sharegpt_requests(
     with open(dataset_path) as f:
         dataset = json.load(f)
     # Filter out the conversations with less than 2 turns.
-    dataset = [data for data in dataset if len(data["conversations"]) >= 2]
+    # dataset = [data for data in dataset if len(data["conversations"]) >= 2]
+    dataset = [data for data in dataset if len(data["items"]) >= 2]
+    
     # Only keep the first two turns of each conversation.
-    dataset = [(data["conversations"][0]["value"],
-                data["conversations"][1]["value"]) for data in dataset]
+    # dataset = [(data["conversations"][0]["value"],
+    #             data["conversations"][1]["value"]) for data in dataset]
+    dataset = [(data["items"][0]["value"],
+                data["items"][1]["value"]) for data in dataset]
 
     # Shuffle the dataset.
     random.shuffle(dataset)
@@ -112,6 +144,33 @@ def sample_sharegpt_requests(
         if prompt_len > 1024 or prompt_len + output_len > 2048:
             # Prune too long sequences.
             continue
+        filtered_dataset.append((prompt, prompt_len, output_len))
+
+    return filtered_dataset
+
+def sp_auto_gen(
+    num_requests: int,
+    tokenizer: PreTrainedTokenizerBase,
+    lo_prompt: int,
+    hi_prompt: int,
+    lo_completion: int,
+    hi_completion: int,
+    seed: int = 42,
+    fixed_output_len: Optional[int] = None,
+) -> List[Tuple[str, int, int]]:
+    if fixed_output_len is not None and fixed_output_len < 4:
+        raise ValueError("output_len too small")
+
+    random.seed(seed)
+    filtered_dataset: List[Tuple[str, int, int]] = []
+    for i in range(num_requests):
+        # Tokenize the prompts and completions.
+        prompt = "hi" * random.randint(lo_prompt, hi_prompt)
+        prompt_token_ids = tokenizer(prompt).input_ids
+        completion_len = random.randint(lo_completion, hi_completion)
+
+        prompt_len = len(prompt_token_ids)
+        output_len = completion_len if fixed_output_len is None else fixed_output_len
         filtered_dataset.append((prompt, prompt_len, output_len))
 
     return filtered_dataset
@@ -188,9 +247,10 @@ def sample_sonnet_requests(
 
 
 def sample_random_requests(
-        input_len: int, output_len: int, num_prompts: int, range_ratio: float,
+        input_len: int, output_len: int, num_prompts: int, range_ratio: float, seed: int,
         tokenizer: PreTrainedTokenizerBase) -> List[Tuple[str, int, int]]:
 
+    random.seed(seed)
     input_lens = np.random.randint(
         int(input_len * range_ratio),
         input_len + 1,
@@ -459,6 +519,18 @@ def main(args: argparse.Namespace):
             tokenizer=tokenizer,
             fixed_output_len=args.sharegpt_output_len,
         )
+        
+    elif args.dataset_name == "sp-autogen":
+        input_requests = sp_auto_gen(
+            num_requests=args.num_prompts,
+            tokenizer=tokenizer,
+            fixed_output_len=args.sharegpt_output_len,
+            lo_prompt=args.lo_prompt,
+            hi_prompt=args.hi_prompt,
+            lo_completion=args.lo_completion,
+            hi_completion=args.hi_completion,
+            seed=args.seed,
+        )
 
     elif args.dataset_name == "sonnet":
         # Do not format the prompt, pass to message directly
@@ -497,6 +569,7 @@ def main(args: argparse.Namespace):
             num_prompts=args.num_prompts,
             range_ratio=args.random_range_ratio,
             tokenizer=tokenizer,
+            seed=args.seed,
         )
 
     else:
@@ -520,11 +593,11 @@ def main(args: argparse.Namespace):
         result_json: Dict[str, Any] = {}
 
         # Setup
-        current_dt = datetime.now().strftime("%Y%m%d-%H%M%S")
+        current_dt = datetime.now().strftime("%m%d-%H%M%S")
         result_json["date"] = current_dt
-        result_json["backend"] = backend
-        result_json["model_id"] = model_id
-        result_json["tokenizer_id"] = tokenizer_id
+        # result_json["backend"] = backend
+        # result_json["model_id"] = model_id
+        # result_json["tokenizer_id"] = tokenizer_id
         result_json["best_of"] = args.best_of
         result_json["use_beam_search"] = args.use_beam_search
         result_json["num_prompts"] = args.num_prompts
@@ -548,8 +621,11 @@ def main(args: argparse.Namespace):
         result_json = {**result_json, **benchmark_result}
 
         # Save to file
-        base_model_id = model_id.split("/")[-1]
-        file_name = f"{backend}-{args.request_rate}qps-{base_model_id}-{current_dt}.json"  #noqa
+        # base_model_id = model_id.split("/")[-1]
+        if args.dataset_name == "random":
+            file_name = f"random-{args.request_rate}qps-{args.num_prompts}-p({args.random_input_len},{args.random_output_len})-{args.random_range_ratio}-seed{args.seed}-{current_dt}.json"
+        else:
+            file_name = f"{args.request_rate}qps-{args.num_prompts}-{current_dt}.json"  #noqa
         if args.result_filename:
             file_name = args.result_filename
         if args.result_dir:
@@ -599,6 +675,10 @@ if __name__ == "__main__":
                         type=str,
                         default=None,
                         help="Path to the dataset.")
+    parser.add_argument("--lo-prompt", type=int, default=10, help="If dataset-name==sp-autogen, set the lower bound for prompt length (default: 10).")
+    parser.add_argument("--hi-prompt", type=int, default=500, help="If dataset-name==sp-autogen, set the upper bound for prompt length (default: 100).")
+    parser.add_argument("--lo-completion", type=int, default=10, help="If dataset-name==sp-autogen, set the lower bound for completion length (default: 10).")
+    parser.add_argument("--hi-completion", type=int, default=500, help="If dataset-name==sp-autogen, set the upper bound for completion length (default: 100).")
     parser.add_argument(
         "--model",
         type=str,
