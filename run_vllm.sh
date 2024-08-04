@@ -1,13 +1,20 @@
 #!/bin/bash
 
 # 定义基本命令
+# base_command="python benchmarks/benchmark_serving.py \
+#         --backend vllm \
+#         --model /data2/sp/models/Qwen2-7B-Instruct/ --port 8005 \
+#         --dataset-name sharegpt \
+#         --dataset-path /data2/sp/datasets/sharegpt_gpt4.json \
+#         --num-prompts 500 \
+#         --save-result --result-dir ./outputs_script/sarathi"
 base_command="python benchmarks/benchmark_serving.py \
         --backend vllm \
         --model /data2/sp/models/Qwen2-7B-Instruct/ --port 8005 \
-        --dataset-name sharegpt \
-        --dataset-path /data2/sp/datasets/sharegpt_gpt4.json \
+        --dataset-name random \
+        --random-input-len 2000 --random-output-len 200 --random-range-ratio 0.6 --seed 42 \
         --num-prompts 500 \
-        --save-result --result-dir ./outputs_script/sarathi"
+        --save-result --result-dir ./outputs_script_long/vllm"
 
 # 循环从1到10
 for rate in {1..20}; do
