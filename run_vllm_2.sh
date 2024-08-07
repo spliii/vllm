@@ -9,16 +9,19 @@
 #         --num-prompts 500 \
 #         --save-result --result-dir ./outputs_script_mistral/sarathi"
 
+# pid is 1610561
+pid=1698806
+
 base_command="python benchmarks/benchmark_serving.py \
         --backend vllm \
         --model /data2/sp/models/Qwen2-7B-Instruct/ --port 8015 \
         --dataset-name random \
-        --random-input-len 2000 --random-output-len 200 --random-range-ratio 0.6 --seed 42 \
+        --random-input-len 4000 --random-output-len 400 --random-range-ratio 0.6 --seed 42 \
         --num-prompts 500 \
         --save-result --result-dir ./outputs_script_long/sarathi"
 
 # 循环从1到10
-for rate in {1..20}; do
+for rate in {4..6}; do
     # 构建完整命令
     full_command="${base_command} --request-rate ${rate}"
 
@@ -34,3 +37,5 @@ for rate in {1..20}; do
 done
 
 echo "All commands have been executed."
+
+# kill -9 $pid

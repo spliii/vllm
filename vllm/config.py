@@ -798,6 +798,7 @@ class SchedulerConfig:
                  num_lookahead_slots: int = 0,
                  delay_factor: float = 0.0,
                  enable_chunked_prefill: bool = False,
+                 enable_mid: bool = False,
                  embedding_mode: Optional[bool] = False,
                  preemption_mode: Optional[str] = None) -> None:
         if max_num_batched_tokens is not None:
@@ -819,6 +820,12 @@ class SchedulerConfig:
             logger.info(
                 "Chunked prefill is enabled with max_num_batched_tokens=%d.",
                 self.max_num_batched_tokens)
+        
+        if enable_mid:
+            if enable_chunked_prefill:
+                logger.info("=====SP: Sarathi is on! Mid will not be used!=====")
+            else:
+                logger.info("=====SP:Mid is enabled!=====")
 
         self.max_num_seqs = max_num_seqs
         self.max_model_len = max_model_len
@@ -826,6 +833,7 @@ class SchedulerConfig:
         self.num_lookahead_slots = num_lookahead_slots
         self.delay_factor = delay_factor
         self.chunked_prefill_enabled = enable_chunked_prefill
+        self.mid_enabled = enable_mid
         self.embedding_mode = embedding_mode
         self.preemption_mode = preemption_mode
         self._verify_args()

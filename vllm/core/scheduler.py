@@ -917,12 +917,116 @@ class Scheduler:
                        len(running_scheduled.swapped_out)),
         )
 
+    def _schedule_default_decode_mid(self) -> SchedulerOutputs:
+        global round  
+        """Schedule queued requests.
+        静态batch，decode优先级最高，swap其次，prefill最低
+        """
+        # Include running requests to the budget.
+        budget = SchedulingBudget(
+            token_budget=self.scheduler_config.max_num_batched_tokens,
+            max_num_seqs=self.scheduler_config.max_num_seqs,
+        )
+        # Make sure we include num running seqs before scheduling prefill,
+        # so that we don't schedule beyond max_num_seqs for prefill.
+        for seq_group in self.running:
+            budget.add_num_seqs(seq_group.request_id,
+                                seq_group.get_max_num_running_seqs())
+        curr_loras = set(
+            seq_group.lora_int_id for seq_group in self.running
+            if seq_group.lora_int_id > 0) if self.lora_enabled else None
+
+        prefills = SchedulerPrefillOutputs.create_empty()
+        running_scheduled = SchedulerRunningOutputs.create_empty()
+        swapped_in = SchedulerSwappedInOutputs.create_empty()
+
+        # If any requests are swapped, prioritized swapped requests.
+        # 计算prefill之前需要等待的迭代次数
+        waiting_queue = deque([s for s in self.waiting])
+        if waiting_queue:
+            seq_group = waiting_queue[0]
+            waiting_seqs = seq_group.get_seqs(status=SequenceStatus.WAITING)
+            nums_round = waiting_seqs[0].get_len() / 768  # lsp：每个prompt的长度 / 768 (chunked size = 768)
+        else:
+            nums_round = 0
+        is_mid = False
+        if (not self.swapped) and self.waiting:
+            if round >= nums_round:
+                round = 0
+                prefills = self._schedule_prefills(budget,
+                                                curr_loras,
+                                                enable_chunking=False)
+            else:
+                round += 1
+                is_mid = True # mid生效，decode优先级最高（这些decode是因为prefill被mid而调度的，进行平滑）
+
+        # lsp：不足round的迭代次数就继续decode
+        if len(prefills.seq_groups) == 0:
+            running_scheduled = self._schedule_running(budget,
+                                                    curr_loras,
+                                                    enable_chunking=False)
+
+            # If any sequence group is preempted, do not swap in any sequence
+            # group. because it means there's no slot for new running requests.
+            if len(running_scheduled.preempted) + len(
+                    running_scheduled.swapped_out) == 0:
+                swapped_in = self._schedule_swapped(budget, curr_loras)
+            
+            if len(running_scheduled.decode_seq_groups) == 0 and len(swapped_in.decode_seq_groups) == 0 and round <= nums_round:
+                prefills = self._schedule_prefills(budget,
+                                               curr_loras,
+                                               enable_chunking=False)
+                round = 0
+ 
+
+
+        assert (budget.num_batched_tokens <=
+                self.scheduler_config.max_num_batched_tokens)
+        assert budget.num_curr_seqs <= self.scheduler_config.max_num_seqs
+
+        # Update waiting requests.
+        self.waiting.extendleft(running_scheduled.preempted)
+        # Update new running requests.
+        self.running.extend([s.seq_group for s in prefills.seq_groups])
+        self.running.extend(
+            [s.seq_group for s in running_scheduled.decode_seq_groups])
+        self.running.extend(
+            [s.seq_group for s in swapped_in.decode_seq_groups])
+        # Update swapped requests.
+        self.swapped.extend(running_scheduled.swapped_out)
+        preempted = (len(running_scheduled.preempted) +
+                     len(running_scheduled.swapped_out))
+
+        # There should be no prefill from running queue because this policy
+        # doesn't allow chunked prefills.
+        assert len(running_scheduled.prefill_seq_groups) == 0
+        assert len(swapped_in.prefill_seq_groups) == 0
+        return SchedulerOutputs(
+            scheduled_seq_groups=(prefills.seq_groups +
+                                  running_scheduled.decode_seq_groups +
+                                  swapped_in.decode_seq_groups),
+            num_prefill_groups=len(prefills.seq_groups),
+            num_batched_tokens=budget.num_batched_tokens,
+            blocks_to_swap_in=swapped_in.blocks_to_swap_in,
+            blocks_to_swap_out=running_scheduled.blocks_to_swap_out,
+            blocks_to_copy=running_scheduled.blocks_to_copy +
+            swapped_in.blocks_to_copy,
+            ignored_seq_groups=prefills.ignored_seq_groups +
+            swapped_in.infeasible_seq_groups,
+            num_lookahead_slots=running_scheduled.num_lookahead_slots,
+            running_queue_size=len(self.running),
+            preempted=preempted,
+        )
+
     def _schedule(self) -> SchedulerOutputs:
         """Schedule queued requests."""
         if self.scheduler_config.chunked_prefill_enabled:
             return self._schedule_chunked_prefill()
         else:
-            return self._schedule_default()
+            if self.scheduler_config.mid_enabled:
+                return self._schedule_default_decode_mid()
+            else:
+                return self._schedule_default()
 
     def _can_append_slots(self, seq_group: SequenceGroup) -> bool:
         """Determine whether or not we have enough space in the KV cache to

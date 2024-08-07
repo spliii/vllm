@@ -4,18 +4,18 @@ import os
 import re
 
 # # 定义文件路径和QPS值范围
-# base_path = "/home/spli/vllm/outputs_script_long/vllm"
-base_path = "/home/spli/vllm/outputs_script_long/sarathi"
+base_path = "/home/spli/vllm/outputs_script_long/vllm"
+# base_path = "/home/spli/vllm/outputs_script_long/sarathi"
 
 # base_path = "/home/spli/vllm/outputs_script_mistral_long/vllm"
 # base_path = "/home/spli/vllm/outputs_script_mistral_long/sarathi"
 
 # file_pattern = "{}.0qps-500-0802-*"
-file_pattern = "random-{}.0qps-500-*"
+file_pattern = "random-{}\.0qps-500.*4000.*0804-2.*"
 
-qps_values = range(1, 21)  # [ , )
-# fig_name = "qwen2_500_random_long_2000_200_vllm_1_21.png"
-fig_name = "qwen2_500_random_long_2000_200_sarathi_1_21.png"
+qps_values = range(1, 11)  # [ , )
+fig_name = "qwen2_500_random_long_4000_400_vllm_1_10.png"
+# fig_name = "qwen2_500_random_long_4000_400_sarathi_1_10_0805-1.png"
 
 
 
@@ -44,6 +44,7 @@ for qps in qps_values:
     if matching_files:
         file_name = matching_files[0]
         file_path = os.path.join(base_path, file_name)
+        print(file_name)
         
         try:
             with open(file_path, 'r') as file:
