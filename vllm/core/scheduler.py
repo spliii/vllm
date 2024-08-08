@@ -330,6 +330,8 @@ class Scheduler:
                                        if self.enable_artificial_preemption
                                        else 0)
         self.num_cumulative_preemption: int = 0
+        
+        self.round = 0
 
     @property
     def lora_enabled(self) -> bool:
@@ -918,7 +920,7 @@ class Scheduler:
         )
 
     def _schedule_default_decode_mid(self) -> SchedulerOutputs:
-        global round  
+        
         """Schedule queued requests.
         静态batch，decode优先级最高，swap其次，prefill最低
         """
@@ -946,18 +948,18 @@ class Scheduler:
         if waiting_queue:
             seq_group = waiting_queue[0]
             waiting_seqs = seq_group.get_seqs(status=SequenceStatus.WAITING)
-            nums_round = waiting_seqs[0].get_len() / 768  # lsp：每个prompt的长度 / 768 (chunked size = 768)
+            curr_round = waiting_seqs[0].get_len() / 512  # lsp：每个prompt的长度 / 768 (chunked size = 768)
         else:
-            nums_round = 0
+            curr_round = 0
         is_mid = False
         if (not self.swapped) and self.waiting:
-            if round >= nums_round:
-                round = 0
+            if self.round >= curr_round:
+                self.round = 0
                 prefills = self._schedule_prefills(budget,
                                                 curr_loras,
                                                 enable_chunking=False)
             else:
-                round += 1
+                self.round += 1
                 is_mid = True # mid生效，decode优先级最高（这些decode是因为prefill被mid而调度的，进行平滑）
 
         # lsp：不足round的迭代次数就继续decode
@@ -972,11 +974,11 @@ class Scheduler:
                     running_scheduled.swapped_out) == 0:
                 swapped_in = self._schedule_swapped(budget, curr_loras)
             
-            if len(running_scheduled.decode_seq_groups) == 0 and len(swapped_in.decode_seq_groups) == 0 and round <= nums_round:
+            if len(running_scheduled.decode_seq_groups) == 0 and len(swapped_in.decode_seq_groups) == 0 and self.round <= curr_round:
                 prefills = self._schedule_prefills(budget,
                                                curr_loras,
                                                enable_chunking=False)
-                round = 0
+                self.round = 0
  
 
 

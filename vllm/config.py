@@ -824,7 +824,15 @@ class SchedulerConfig:
         if enable_mid:
             if enable_chunked_prefill:
                 logger.info("=====SP: Sarathi is on! Mid will not be used!=====")
+                logger.info("=====SP: Sarathi is on! Mid will not be used!=====")
+                logger.info("=====SP: Sarathi is on! Mid will not be used!=====")
+                logger.info("=====SP: Sarathi is on! Mid will not be used!=====")
+                logger.info("=====SP: Sarathi is on! Mid will not be used!=====")
             else:
+                logger.info("=====SP:Mid is enabled!=====")
+                logger.info("=====SP:Mid is enabled!=====")
+                logger.info("=====SP:Mid is enabled!=====")
+                logger.info("=====SP:Mid is enabled!=====")
                 logger.info("=====SP:Mid is enabled!=====")
 
         self.max_num_seqs = max_num_seqs
