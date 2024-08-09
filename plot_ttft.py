@@ -4,7 +4,7 @@ import os
 import re
 
 # # 定义文件路径和QPS值范围
-base_path = "/home/spli/vllm/outputs_script_long/mid"
+base_path = "/home/spli/vllm/outputs_script/vllm"
 # base_path = "/home/spli/vllm/outputs_script/sarathi"
 
 # base_path = "/home/spli/vllm/outputs_script_mistral/vllm"
@@ -12,7 +12,7 @@ base_path = "/home/spli/vllm/outputs_script_long/mid"
 
 # file_pattern = "{}.0qps-500-0802-*"
 # file_pattern = "{}\.0qps-500.*0808.*"
-file_pattern = ".*-{}\.0qps-.*-0808.*"
+file_pattern = "{}\.0qps-.*-0808.*"
 
 qps_values = range(1, 21)  # [ , )
 # fig_name = "qwen2_500_sharegpt_gpt4_sarathi_1_20_0808.png"
