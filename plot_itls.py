@@ -4,18 +4,18 @@ import os
 import re
 
 # # 定义文件路径和QPS值范围
-base_path = "/home/spli/vllm/outputs_script/vllm"
+base_path = "/home/spli/vllm/outputs_script_long/sarathi"
 # base_path = "/home/spli/vllm/outputs_script/sarathi"
 
 # base_path = "/home/spli/vllm/outputs_script_mistral/vllm"
 # base_path = "/home/spli/vllm/outputs_script_mistral/sarathi"
 
 # file_pattern = "{}.0qps-500-0802-*"
-file_pattern = "1.0qps-500.*0808.*"
+file_pattern = ".*-15.0qps-500.*0808-1.*"
 
 # qps_values = range(3, 6)  # [ , )
 # fig_name = "qwen2_500_sharegpt_gpt4_vllm_1_18.png"
-fig_name = "itls_0808_1.png"
+fig_name = "itls_0808_15.png"
 
 request_id = [1 , 55, 405]
 # fig_name = "mistral_500_sharegpt_gpt4_vllm_1_12.png"

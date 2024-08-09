@@ -15,10 +15,10 @@ base_command="python benchmarks/benchmark_serving.py \
         --dataset-name random \
         --random-input-len 2000 --random-output-len 400 --random-range-ratio 0.6 --seed 42 \
         --num-prompts 500 \
-        --save-result --result-dir ./outputs_script_long/sarathi"
+        --save-result --result-dir ./outputs_script_long/mid"
 
 # 循环从1到10
-for rate in {11..20}; do
+for rate in {1..20}; do
     # 构建完整命令
     full_command="${base_command} --request-rate ${rate}"
 

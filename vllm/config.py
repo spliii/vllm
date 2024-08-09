@@ -798,7 +798,7 @@ class SchedulerConfig:
                  num_lookahead_slots: int = 0,
                  delay_factor: float = 0.0,
                  enable_chunked_prefill: bool = False,
-                 enable_mid: bool = False,
+                 enable_mid: bool = True,
                  embedding_mode: Optional[bool] = False,
                  preemption_mode: Optional[str] = None) -> None:
         if max_num_batched_tokens is not None:
