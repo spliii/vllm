@@ -4,7 +4,7 @@ import os
 import re
 import argparse
 
-# python plot_delivery_engine.py --engine 0 --dataset 0 --qps 1
+# python plot_delivery_single.py --engine 0 --dataset 0 --qps 1
 
 # 参数为engine名称，0代表vllm，1代表sarathi，2代表mid
 parser = argparse.ArgumentParser()
@@ -35,9 +35,10 @@ elif args.engine == 2:
 
 base_path = "/home/spli/vllm/{}/{}".format(dataset, engine)
 
-fig_name = "delivery_0808_{}.png".format(args.qps)
+fig_name = "delivery_0814_{}.png".format(args.qps)
 
-request_id = [1 , 55, 405]
+
+request_id = [200, 270, 380]
 
 itls_list = []
 
@@ -64,7 +65,7 @@ if matching_files:
             data = json.load(file)  # 加载JSON文件
         
             for i in range (0, 3):
-                sublist = data['itls'][request_id[i]]
+                sublist = data['itls'][request_id[i]][:]
                 itls_list.append(sublist)
 
     except FileNotFoundError:
@@ -97,8 +98,8 @@ ax1.tick_params(axis='y', labelcolor=color)
 ax2 = ax1.twinx()
 color = 'tab:blue'
 ax2.set_ylabel('55', color=color)
-ax2.plot(list(range(1, len(itls_list[1]) + 1)), itls_list[1], color=color, label='55', linewidth=lw)
-ax2.scatter(list(range(1, len(itls_list[1]) + 1)),  itls_list[1], color=color, s=s)
+ax1.plot(list(range(1, len(itls_list[1]) + 1)), itls_list[1], color=color, label='55', linewidth=lw)
+ax1.scatter(list(range(1, len(itls_list[1]) + 1)),  itls_list[1], color=color, s=s)
 ax2.tick_params(axis='y', labelcolor=color)
 
 # 创建第三个轴
@@ -106,8 +107,8 @@ ax3 = ax1.twinx()
 color = 'tab:green'
 ax3.spines["right"].set_position(("axes", 1.1))  # 将第三个轴移动到右侧更远的位置
 ax3.set_ylabel('405', color=color)
-ax3.plot(list(range(1, len(itls_list[2]) + 1)), itls_list[2], color=color, label='405', linewidth=lw)
-ax3.scatter(list(range(1, len(itls_list[2]) + 1)),  itls_list[2], color=color, s=s)
+ax1.plot(list(range(1, len(itls_list[2]) + 1)), itls_list[2], color=color, label='405', linewidth=lw)
+ax1.scatter(list(range(1, len(itls_list[2]) + 1)),  itls_list[2], color=color, s=s)
 ax3.tick_params(axis='y', labelcolor=color)
 
 # # 创建第四个轴

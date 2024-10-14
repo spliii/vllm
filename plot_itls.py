@@ -4,20 +4,25 @@ import os
 import re
 
 # # 定义文件路径和QPS值范围
-base_path = "/home/spli/vllm/outputs_script_long/sarathi"
+# base_path = "/home/spli/vllm/outputs_script_long/sarathi"
 # base_path = "/home/spli/vllm/outputs_script/sarathi"
+base_path = "/home/spli/vllm/outputs/sarathi"
 
 # base_path = "/home/spli/vllm/outputs_script_mistral/vllm"
 # base_path = "/home/spli/vllm/outputs_script_mistral/sarathi"
-
+# /home/spli/vllm/outputs/vllm/random-100.0qps-2-p(2000,10000)-1.0-seed42-0813-142531.json
 # file_pattern = "{}.0qps-500-0802-*"
-file_pattern = ".*-15.0qps-500.*0808-1.*"
+# file_pattern = ".*-15.0qps-500.*0808-1.*"
+file_pattern = ".*0813-144.*"
 
 # qps_values = range(3, 6)  # [ , )
 # fig_name = "qwen2_500_sharegpt_gpt4_vllm_1_18.png"
 fig_name = "itls_0808_15.png"
+fig_name = "itls_0813_sarathi.png"
 
 request_id = [1 , 55, 405]
+request_id = [0, 1, 0]
+
 # fig_name = "mistral_500_sharegpt_gpt4_vllm_1_12.png"
 
 
@@ -48,7 +53,7 @@ if matching_files:
             data = json.load(file)  # 加载JSON文件
         
             for i in range (0, 3):
-                sublist = data['itls'][request_id[i]][20:]
+                sublist = data['itls'][request_id[i]][1:]
                 itls_list.append(sublist)
 
     except FileNotFoundError:
